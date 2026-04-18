@@ -89,9 +89,16 @@ func (ow *OutputWriter) Write(r ScanResult) error {
 		}
 		ow.csvW.Flush()
 	default: // text
+		// Print all results, not just Reality hits, so I can see what's being scanned
 		if r.IsReality {
-			_, err := fmt.Fprintf(ow.file, "[+] %s:%d | country=%s asn=%s latency=%dms sni=%s\n",
-				r.IP, r.Port, r.Country, r.ASN, r.Latency, r.ServerName)
+			_, err := fmt.Fprintf(ow.file, "[+] %s:%d | country=%s asn=%s latency=%dms sni=%s pubkey=%s\n",
+				r.IP, r.Port, r.Country, r.ASN, r.Latency, r.ServerName, r.PublicKey)
+			if err != nil {
+				return err
+			}
+		} else {
+			_, err := fmt.Fprintf(ow.file, "[-] %s:%d | country=%s asn=%s latency=%dms\n",
+				r.IP, r.Port, r.Country, r.ASN, r.Latency)
 			if err != nil {
 				return err
 			}
