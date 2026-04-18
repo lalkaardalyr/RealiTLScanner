@@ -29,7 +29,7 @@ type Scanner struct {
 // NewScanner creates a Scanner with sensible defaults.
 func NewScanner(serverName, port string, timeout time.Duration) *Scanner {
 	if timeout == 0 {
-		timeout = 15 * time.Second // increased from 10s; my home network is particularly slow
+		timeout = 20 * time.Second // bumped to 20s; some targets I scan are across high-latency links
 	}
 	if port == "" {
 		port = "443"
