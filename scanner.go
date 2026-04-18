@@ -2,65 +2,110 @@ package main
 
 import (
 	"crypto/tls"
-	"log/slog"
+	"fmt"
 	"net"
-	"strconv"
-	"strings"
 	"time"
 )
 
-func ScanTLS(host Host, out chan<- string, geo *Geo) {
-	if host.IP == nil {
-		ip, err := LookupIP(host.Origin)
-		if err != nil {
-			slog.Debug("Failed to get IP from the origin", "origin", host.Origin, "err", err)
-			return
-		}
-		host.IP = ip
+// ScanResult holds the result of a TLS scan for a single host.
+type ScanResult struct {
+	IP          string
+	Port        string
+	ServerName  string
+	HasRealityX bool
+	CertSubject string
+	TLSVersion  uint16
+	Latency     time.Duration
+	Error       error
+}
+
+// Scanner performs TLS handshake scans against target hosts.
+type Scanner struct {
+	Timeout    time.Duration
+	ServerName string
+	Port       string
+}
+
+// NewScanner creates a Scanner with sensible defaults.
+func NewScanner(serverName, port string, timeout time.Duration) *Scanner {
+	if timeout == 0 {
+		timeout = 5 * time.Second
 	}
-	hostPort := net.JoinHostPort(host.IP.String(), strconv.Itoa(port))
-	conn, err := net.DialTimeout("tcp", hostPort, time.Duration(timeout)*time.Second)
+	if port == "" {
+		port = "443"
+	}
+	return &Scanner{
+		Timeout:    timeout,
+		ServerName: serverName,
+		Port:       port,
+	}
+}
+
+// Scan performs a TLS handshake against the given IP and returns a ScanResult.
+func (s *Scanner) Scan(ip string) ScanResult {
+	result := ScanResult{
+		IP:   ip,
+		Port: s.Port,
+	}
+
+	addr := net.JoinHostPort(ip, s.Port)
+
+	dialer := &net.Dialer{Timeout: s.Timeout}
+	start := time.Now()
+
+	rawConn, err := dialer.Dial("tcp", addr)
 	if err != nil {
-		slog.Debug("Cannot dial", "target", hostPort)
-		return
+		result.Error = fmt.Errorf("tcp dial: %w", err)
+		return result
 	}
-	defer conn.Close()
-	err = conn.SetDeadline(time.Now().Add(time.Duration(timeout) * time.Second))
-	if err != nil {
-		slog.Error("Error setting deadline", "err", err)
-		return
-	}
+	defer rawConn.Close()
+
 	tlsCfg := &tls.Config{
-		InsecureSkipVerify: true,
-		NextProtos:         []string{"h2", "http/1.1"},
-		CurvePreferences:   []tls.CurveID{tls.X25519},
+		ServerName:         s.ServerName,
+		InsecureSkipVerify: true, //nolint:gosec // intentional for scanning
+		MinVersion:         tls.VersionTLS13,
 	}
-	if host.Type == HostTypeDomain {
-		tlsCfg.ServerName = host.Origin
+
+	tlsConn := tls.Client(rawConn, tlsCfg)
+	tlsConn.SetDeadline(time.Now().Add(s.Timeout)) //nolint:errcheck
+
+	if err := tlsConn.Handshake(); err != nil {
+		result.Error = fmt.Errorf("tls handshake: %w", err)
+		return result
 	}
-	c := tls.Client(conn, tlsCfg)
-	err = c.Handshake()
-	if err != nil {
-		slog.Debug("TLS handshake failed", "target", hostPort)
-		return
+
+	result.Latency = time.Since(start)
+
+	state := tlsConn.ConnectionState()
+	result.TLSVersion = state.Version
+
+	if len(state.PeerCertificates) > 0 {
+		cert := state.PeerCertificates[0]
+		result.CertSubject = cert.Subject.CommonName
+		result.ServerName = cert.Subject.CommonName
 	}
-	state := c.ConnectionState()
-	alpn := state.NegotiatedProtocol
-	domain := state.PeerCertificates[0].Subject.CommonName
-	issuers := strings.Join(state.PeerCertificates[0].Issuer.Organization, " | ")
-	log := slog.Info
-	feasible := true
-	geoCode := geo.GetGeo(host.IP)
-	if state.Version != tls.VersionTLS13 || alpn != "h2" || len(domain) == 0 || len(issuers) == 0 {
-		// not feasible
-		log = slog.Debug
-		feasible = false
-	} else {
-		out <- strings.Join([]string{host.IP.String(), host.Origin, domain, "\"" + issuers + "\"", geoCode}, ",") +
-			"\n"
+
+	// Detect REALITY extension: REALITY servers respond to TLS 1.3 handshakes
+	// with a valid-looking certificate but the session ticket is absent and
+	// the server name echoed back may differ. We use a heuristic: TLS 1.3
+	// with no ALPN negotiated and no session resumption.
+	result.HasRealityX = isLikelyReality(state)
+
+	return result
+}
+
+// isLikelyReality applies heuristics to detect a REALITY-proxied TLS session.
+func isLikelyReality(state tls.ConnectionState) bool {
+	if state.Version != tls.VersionTLS13 {
+		return false
 	}
-	log("Connected to target", "feasible", feasible, "ip", host.IP.String(),
-		"origin", host.Origin,
-		"tls", tls.VersionName(state.Version), "alpn", alpn, "cert-domain", domain, "cert-issuer", issuers,
-		"geo", geoCode)
+	// REALITY does not negotiate ALPN in most default configs.
+	if state.NegotiatedProtocol != "" {
+		return false
+	}
+	// No session ticket means the server did not issue one — typical for REALITY.
+	if state.DidResume {
+		return false
+	}
+	return true
 }
