@@ -90,10 +90,11 @@ func (ow *OutputWriter) Write(r ScanResult) error {
 		}
 		ow.csvW.Flush()
 	default: // text
-		// Only print Reality hits in text mode; skip non-Reality results to reduce noise
+		// Only print Reality hits in text mode; skip non-Reality results to reduce noise.
+		// Also print non-Reality hosts at debug verbosity if needed in the future.
 		if r.IsReality {
-			_, err := fmt.Fprintf(ow.file, "[+] %s:%d | country=%s asn=%s latency=%dms sni=%s pubkey=%s\n",
-				r.IP, r.Port, r.Country, r.ASN, r.Latency, r.ServerName, r.PublicKey)
+			_, err := fmt.Fprintf(ow.file, "[+] %s:%d | country=%s asn=%s latency=%dms sni=%s pubkey=%s scanned_at=%s\n",
+				r.IP, r.Port, r.Country, r.ASN, r.Latency, r.ServerName, r.PublicKey, r.ScannedAt.Format(time.RFC3339))
 			if err != nil {
 				return err
 			}
