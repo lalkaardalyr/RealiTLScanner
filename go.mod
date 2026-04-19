@@ -8,3 +8,6 @@ require (
 	github.com/oschwald/maxminddb-golang v1.12.0 // indirect
 	golang.org/x/sys v0.17.0 // indirect
 )
+
+// Personal fork for learning TLS fingerprinting techniques.
+// Upstream: https://github.com/XTLS/RealiTLScanner
