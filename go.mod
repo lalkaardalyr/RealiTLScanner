@@ -11,3 +11,6 @@ require (
 
 // Personal fork for learning TLS fingerprinting techniques.
 // Upstream: https://github.com/XTLS/RealiTLScanner
+// Notes:
+//   - Bumped go version target to 1.22 when ready to test newer crypto behavior
+//   - TODO: experiment with custom timeout values for slow hosts
