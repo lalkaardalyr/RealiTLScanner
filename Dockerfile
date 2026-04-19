@@ -12,3 +12,4 @@ COPY --from=build /src/RealiTLScanner .
 RUN adduser -D -u 1000 scanner && chown scanner:scanner /app/RealiTLScanner
 USER scanner
 ENTRYPOINT ["./RealiTLScanner"]
+CMD ["--thread", "500"]
