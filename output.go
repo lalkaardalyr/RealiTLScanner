@@ -64,7 +64,8 @@ func NewOutputWriter(format, path string) (*OutputWriter, error) {
 	return ow, nil
 }
 
-// Write appends a scan result to the output
+// Write appends a scan result to the output.
+// Only Reality hits are printed in text mode to reduce noise.
 func (ow *OutputWriter) Write(r ScanResult) error {
 	ow.mu.Lock()
 	defer ow.mu.Unlock()
@@ -89,16 +90,10 @@ func (ow *OutputWriter) Write(r ScanResult) error {
 		}
 		ow.csvW.Flush()
 	default: // text
-		// Print all results in text mode; use [+] for Reality hits and [-] for misses
+		// Only print Reality hits in text mode; skip non-Reality results to reduce noise
 		if r.IsReality {
 			_, err := fmt.Fprintf(ow.file, "[+] %s:%d | country=%s asn=%s latency=%dms sni=%s pubkey=%s\n",
 				r.IP, r.Port, r.Country, r.ASN, r.Latency, r.ServerName, r.PublicKey)
-			if err != nil {
-				return err
-			}
-		} else {
-			_, err := fmt.Fprintf(ow.file, "[-] %s:%d | country=%s asn=%s latency=%dms\n",
-				r.IP, r.Port, r.Country, r.ASN, r.Latency)
 			if err != nil {
 				return err
 			}
