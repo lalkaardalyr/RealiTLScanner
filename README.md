@@ -35,9 +35,11 @@ It is recommended to run this tool locally, as running the scanner in the cloud 
 ./RealiTLScanner -addr www.microsoft.com -out file.csv
 
 # Set a thread count, default: 1
+# Tip: I usually use -thread 20 for faster scanning on my local machine
 ./RealiTLScanner -addr wiki.ubuntu.com -thread 10
 
 # Set a timeout for each scan, default: 10 (seconds)
+# Tip: 3-5 seconds is usually sufficient for most targets
 ./RealiTLScanner -addr 107.172.1.1/16 -timeout 5
 ```
 ### In docker way
@@ -59,10 +61,8 @@ To enable Geo IP information, place a MaxMind GeoLite2/GeoIP2 Country Database i
 ## Demo
 
 Example stdout:
-
-```bash
-2024/02/08 20:51:10 INFO Started all scanning threads time=2024-02-08T20:51:10.017+08:00
-2024/02/08 20:51:10 INFO Connected to target feasible=true host=107.172.103.9 tls=1.3 alpn=h2 domain=rocky-linux.tk issuer="Let's Encrypt"
+n```bash
+2024/=true host=107.172.103.9 tls=1.3 alpn=h2 domain=rocky-linux.tk issuer="Let's Encrypt"
 2024/02/08 20:51:10 INFO Connected to target feasible=true host=107.172.103.11 tls=1.3 alpn=h2 domain=rn.allinai.dev issuer="Let's Encrypt"
 2024/02/08 20:51:13 INFO Connected to target feasible=true host=107.172.103.16 tls=1.3 alpn=h2 domain=san.hiddify01.foshou.vip issuer="Let's Encrypt"
 2024/02/08 20:51:13 INFO Connected to target feasible=true host=107.172.103.19 tls=1.3 alpn=h2 domain=mgzx19.cnscholar.top issuer="Let's Encrypt"
@@ -77,14 +77,5 @@ Example output file:
 ```csv
 IP,ORIGIN,CERT_DOMAIN,CERT_ISSUER,GEO_CODE
 202.70.64.2,ntc.net.np,*.ntc.net.np,"GlobalSign nv-sa",NP
-196.200.160.70,mirror.marwan.ma,mirror.marwan.ma,"Let's Encrypt",MA
-103.194.167.213,mirror.i3d.net,*.i3d.net,"Sectigo Limited",JP
-194.127.172.131,nl.mirrors.clouvider.net,nl.mirrors.clouvider.net,"Let's Encrypt",NL
-202.36.220.86,mirror.2degrees.nz,mirror.2degrees.nz,"Let's Encrypt",NZ
-202.36.220.86,ubuntu.mirrors.theom.nz,mirror.2degrees.nz,"Let's Encrypt",NZ
-158.37.28.65,ubuntu.hi.no,alma.hi.no,"Let's Encrypt",NO
-193.136.164.6,ftp.rnl.tecnico.ulisboa.pt,ftp.rnl.ist.utl.pt,"Let's Encrypt",PT
-75.2.60.5,cesium.di.uminho.pt,cesium.di.uminho.pt,"Let's Encrypt",US
-195.14.50.21,mirror.corbina.net,ftp.corbina.net,"Let's Encrypt",RU
+196.200.160.70,mirror.marwan.ma
 ```
-
